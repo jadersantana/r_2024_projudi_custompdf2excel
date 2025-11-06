@@ -1,0 +1,93 @@
+```{r}
+library(pdftools)
+library(tidyverse)
+library(googlesheets4)
+```
+
+```{r}
+# caminho relativo: notebooks/ -> ../data_raw/
+pdf_path <- file.path("..", "data_raw", "Planilha LP 1588.pdf")
+stopifnot(file.exists(pdf_path))
+
+pages <- pdftools::pdf_text(pdf_path)          # 1 string por página
+PDF   <- unlist(strsplit(pages, "\n", fixed = TRUE), use.names = FALSE)
+
+df <- tibble::tibble(value = PDF) |>
+  tibble::rowid_to_column("ID")
+```
+
+```{r}
+df_cleaned <- df |>
+  filter(!grepl("Página ",value))|>
+  filter(!grepl("JUNTADA DE PETI",value))|>
+  filter(!grepl("PROJUDI - Processo:",value))|>
+  filter(!grepl("Documento assinado digitalmente, conforme MP",value))|>
+  filter(!grepl("Validação deste em https://projudi.tjpr.jus.br/projudi/",value))|>
+  filter(!grepl(" Inconsistências-F. L. Smanio",value))|>
+  filter(!grepl("A          B       C ",value))|>
+  filter(!grepl("A          B        C ",value))|>
+  filter(!grepl("A                   B            C",value))|>
+  filter(!ID == "2499")|>
+  filter(!value == "")
+  
+```
+
+```{r}
+df_splitted <- df_cleaned |>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("linenr","value"), sep=" ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Nro. Estabelecimento","value"), sep=" ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Identificador","value"), sep=" ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Data Transação","value"), sep=" ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Modalidade","value"), sep="   ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Bandeira","value"), sep="      ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Nr Parcelas","value"), sep=" ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Aquivo","value"), sep="  ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Nr Linha","value"), sep="  ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Inconsistência Encontrada","value"), sep="  ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Valor Bruto","value"), sep="  ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Valor Líquido","value"), sep="  ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Taxa Praticada","value"), sep="  ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Taxa Contratada","value"), sep="  ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Valor Líquido Corrigido","value"), sep="  ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  separate("value", into = c("Valor a Ressarcido","value"), sep="  ", extra="merge")|>
+  mutate(value = trimws(value, "left"))|>
+  filter(!ID == "5")|>
+  select(!value)|>
+  separate("Valor Bruto", into = c("moeda","Valor Bruto"), sep=" ", extra="merge")|>
+  select(!moeda)|>
+  separate("Valor Líquido", into = c("moeda","Valor Líquido"), sep=" ", extra="merge")|>
+  select(!moeda)|>
+  separate("Valor Líquido Corrigido", into = c("moeda","Valor Líquido Corrigido"), sep=" ", extra="merge")|>
+  select(!moeda)|>
+  separate("Valor a Ressarcido", into = c("moeda","Valor a Ressarcido"), sep=" ", extra="merge")|>
+  select(!moeda)|>
+  arrange(ID)|>
+  select(!ID)
+
+```
+
+
+```{r}
+gs4_auth(email = "jader.santana@hamburgcap.com")
+write_sheet(df_splitted, "1KJixHYiPaVd3rSDeEoR4S3bn0kc51KNsVXvPlyh0-is", sheet = "exp2")
+```
+
+
+
+
